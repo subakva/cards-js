@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>holdem</title>
+    <script src="../cards.js" type="text/javascript" language="javascript" charset="utf-8"></script>
+    <link rel="stylesheet" href="../cards.css" type="text/css" media="screen" title="cards" charset="utf-8" />
+    <style type="text/css" media="screen">
+    /* <![CDATA[ */
+      .card-group { margin: 4px; }
+      #flop { width: 158px; }
+      #turn { width: 48px; }
+      #river { width: 48px; }
+    /* ]]> */
+    </style>
+    
+    <script type="text/javascript" language="javascript" charset="utf-8">
+    // <![CDATA[
+      function initPage() {
+        var deck = new Deck()
+        deck.shuffle()
+
+        var base = document.getElementById('base');
+        addCard(base, deck)
+        addCard(base, deck)
+
+        var call = document.getElementById('call');
+        call.onclick = function() {
+          if (!deck.flopped) {
+            deck.flopped = true
+            var flop = document.getElementById('flop');
+            addCard(flop, deck)
+            addCard(flop, deck)
+            addCard(flop, deck)
+          } else if (!deck.turned) {
+            deck.turned = true
+            var turn = document.getElementById('turn');
+            addCard(turn, deck)
+          } else if (!deck.rivered) {
+            deck.rivered = true
+            var river = document.getElementById('river');
+            addCard(river, deck)
+          }
+        }
+      }
+      function addCard(base, deck) {
+        var li = document.createElement('li')
+        li.className = 'card-li'
+        li.appendChild(deck.draw().createView())
+        base.appendChild(li)
+      }
+    // ]]>
+    </script>
+  </head>
+  <body onload="initPage()">
+    <div id="table">
+      <ul id="flop" class="card-group"></ul>
+      <ul id="turn" class="card-group"></ul>
+      <ul id="river" class="card-group"></ul><br style="clear:both;"/>
+      <ul id="base" class="card-group"></ul>
+    </div>
+    <br style="clear:both;"/>
+    <div id="controls">
+      <input type="submit" name="call" value="Call" id="call" />
+    </div>
+  </body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <title>blackjack</title>
+
+    <script src="../cards.js" type="text/javascript" language="javascript" charset="utf-8"></script>
+    <link rel="stylesheet" href="../cards.css" type="text/css" media="screen" title="cards" charset="utf-8" />
+
+    <style type="text/css" media="screen">
+    /* <![CDATA[ */
+      #controls {
+        position: relative;
+        width: 350px;
+        margin: 1px auto;
+      }
+      #results {
+        float: right;
+        width: 100px;
+        height: 50px;
+        padding: 0;
+        border: 1px solid #F50;
+        font-family: sans-serif;
+        font-size: 1.2em;
+        color: #000;
+        background-color: #FFF;
+        text-align: center;
+      }
+      #results .header {
+        border-bottom: 1px solid #F50;
+        background-color: #333;
+        color: #F50;
+      }
+      #results .content {
+        padding-top: 8px;
+        font-size: 1.2em;
+      }
+      .table-area {
+        position: relative;
+        width: 350px;
+        margin: 12px auto;
+        height: 150px;
+        border: 1px solid #F50;
+      }
+      .card-group {
+        width: 260px;
+        height: 70px;
+        padding: 0;
+        margin: 0 auto;
+        padding-top: 5px;
+        float: none;
+        border: none;
+      }
+      .base {
+        width: 110px;
+      }
+
+      .money {
+        margin-top: 2px;
+        text-align: right;
+      }
+      .money input {
+        margin-right: 20px;
+      }
+      .money label {
+        margin-right: 2px;
+      }
+
+    /* ]]> */
+    </style>
+    
+    <script type="text/javascript" language="javascript" charset="utf-8">
+    // <![CDATA[
+      Hand = function(player, bet, baseView, hitsView) {
+        this.bet = bet
+        this.player = player
+        this.count = [0]
+        this.base = []
+        this.hits = []
+        this.baseView = baseView
+        this.hitsView = hitsView
+      }
+      Hand.prototype = {
+        MAX_COUNT: 21,
+        DEALER_THRESHOLD: 17,
+        drawBase: function(deck) {
+          this.base.push(this._drawOne(this.baseView, deck, this.player.isDealer))
+          this.base.push(this._drawOne(this.baseView, deck))
+          return this.base
+        },
+        hit: function(deck) {
+          if (this.hits.length == 5) return false
+          this.hits.push(this._drawOne(this.hitsView, deck))
+          return this.hits[this.hits.length - 1]
+        },
+        _drawOne: function(view, deck, hide) {
+          var li = document.createElement('li')
+          var card = deck.draw()
+          this.updateCount(card)
+          if (hide) card.hide()
+          li.appendChild(card.createView())
+          view.appendChild(li)
+          return card
+        },
+        showCards: function() {
+          for(var i = 0; i < this.base.length; i++) {
+            var card = this.base[i]
+            card.show()
+          }
+        },
+        isBlackJack: function() {
+          return this.hits.length == 0 && this.bestCount() == this.MAX_COUNT
+        },
+        isBusted: function() {
+          return this.minCount() > this.MAX_COUNT
+        },
+        bestCount: function() {
+          return (this.maxCount() <= this.MAX_COUNT) ? this.maxCount() : this.minCount()
+        },
+        minCount: function() {
+          var minCount = 100
+          for(var i = 0; i < this.count.length; i++) {
+            var count = this.count[i]
+            if (count < minCount) minCount = count
+          }
+          return minCount
+        },
+        maxCount: function() {
+          var maxCount = 0
+          for(var i = 0; i < this.count.length; i++) {
+            var count = this.count[i]
+            if (count > maxCount) maxCount = count
+          }
+          return maxCount
+        },
+        updateCount: function(card) {
+          if (this.count.length == 1 && card.value == Deck.prototype.ACE) {
+            this.count.push(this.count[0] + 10)
+          }
+          for(var i = 0; i < this.count.length; i++) {
+            this.count[i] += card.value.value
+          }
+        },
+        playOut: function(deck) {
+          this.showCards()
+          while (this.maxCount() < this.DEALER_THRESHOLD) {
+            this.hit(deck)
+          }
+          if (this.maxCount() < this.MAX_COUNT) { return this.maxCount()}
+          while (this.minCount() < this.DEALER_THRESHOLD) {
+            this.hit(deck)
+          }
+          return this.minCount()
+        }
+      }
+
+      Player = function(cash, baseView, hitsView, isDealer) {
+        this.isDealer = isDealer
+        this.cash = cash
+        this.baseView = baseView
+        this.hitsView = hitsView
+      }
+      Player.prototype = {
+        bet: function(bet, deck) {
+          this.hand = new Hand(this, bet, this.baseView, this.hitsView)
+          this.hand.drawBase(deck)
+        },
+        hit: function(deck) {
+          return this.hand.hit(deck)
+        },
+        playOut: function(deck) {
+          return this.hand.playOut(deck)
+        },
+        finishHand: function(dealerHand) {
+          var dealerCount = dealerHand.bestCount()
+          var playerCount = this.hand.bestCount()
+          if (this.hand.isBusted()) {
+            this.cash -= this.hand.bet
+            return 'Busted!'
+          } else if (dealerHand.isBusted() || playerCount > dealerCount) {
+            this.cash += this.hand.bet
+            return 'Winner!'
+          } else if (playerCount < dealerCount || dealerHand.isBlackJack()) {
+            this.cash -= this.hand.bet
+            return 'Loser!'
+          } else {
+            return 'Push!'
+          }
+        },
+        showCards: function() {
+          return this.hand.showCards()
+        }
+      }
+      function initPage() {
+        Deck.prototype.ACE.value = 1
+        Deck.prototype.JACK.value = 10
+        Deck.prototype.QUEEN.value = 10
+        Deck.prototype.KING.value = 10
+
+        var deck = new Deck()
+
+        var cash = document.getElementById('cash');
+        cash.value = 100
+        var bet = document.getElementById('bet');
+        bet.value = 10
+
+        var player = new Player(100,null,null,false)
+        player.baseView = document.getElementById('player-base')
+        player.hitsView = document.getElementById('player-hits')
+
+        var dealer = new Player(100,null,null,true)
+        dealer.baseView = document.getElementById('dealer-base')
+        dealer.hitsView = document.getElementById('dealer-hits')
+
+        var doubleD = document.getElementById('double');
+        doubleD.onclick = function() {
+          doubleD.setAttribute("disabled", "true")
+          hit.setAttribute("disabled", "true")
+          player.hand.bet = player.hand.bet * 2
+          player.hit(deck)
+          stand.click()
+        }
+        var hit = document.getElementById('hit')
+        hit.onclick = function() {
+          doubleD.setAttribute("disabled", "true")
+          player.hit(deck)
+          if (player.hand.isBusted()) {
+            stand.setAttribute("disabled", "true")
+            hit.setAttribute("disabled", "true")
+            dealer.showCards()
+            var result = player.finishHand(dealer.hand)
+            writeStatus('Busted!', player.cash)
+            deal.focus()
+          }
+        }
+        var stand = document.getElementById('stand')
+        stand.onclick = function() {
+          stand.setAttribute("disabled", "true")
+          hit.setAttribute("disabled", "true")
+          doubleD.setAttribute("disabled", "true")
+          deal.focus()
+          dealer.playOut(deck)
+          var result = player.finishHand(dealer.hand)
+          writeStatus(result, player.cash)
+        }
+        var deal = document.getElementById('deal')
+        deal.onclick = function() {
+          stand.removeAttribute("disabled")
+          hit.removeAttribute("disabled")
+          doubleD.removeAttribute("disabled")
+          deck.collect()
+          deck.shuffle()
+          writeStatus('')
+          player.bet(getBet(), deck)
+          dealer.bet(0, deck)
+          if (player.hand.isBlackJack()) {
+            stand.click()
+          }
+        }
+        deal.click() //starts the game        
+      }
+      function getBet() {
+        var bet = document.getElementById('bet');
+        return parseInt(bet.value)
+      }
+      function writeStatus(message, amount) {
+        var status = document.getElementById('status');
+        status.innerHTML = message
+        if (amount) {
+          var cash = document.getElementById('cash');
+          cash.value = amount
+        }
+      }
+    // ]]>
+    </script>
+  </head>
+  <body onload="initPage()">
+    <div id="dealer" class="table-area">
+      <ul id="dealer-base" class="base card-group"></ul>
+      <ul id="dealer-hits" class="hits card-group"></ul>
+    </div>
+    <div id="player" class="table-area">
+      <ul id="player-hits" class="hits card-group"></ul>
+      <ul id="player-base" class="base card-group"></ul>
+    </div>
+    <div id="controls">
+      <div id="results">
+        <div class="header">Results</div>
+        <div id="status" class="content"></div>
+      </div>
+      <input type="submit" name="hit" value="Hit" id="hit" accesskey="h" />
+      <input type="submit" name="double" value="Double" id="double" accesskey="d" />
+      <input type="submit" name="stand" value="Stand" id="stand" accesskey="s" />
+      <input type="submit" name="deal" value="Deal" id="deal" accesskey="d" /><br/>
+      <div class="money">
+        <label for="bet">Bet:</label>
+        <input type="text" name="bet" value="10" id="bet" size="5" />
+        <label for="cash">Cash:</label>
+        <input type="text" readonly name="cash" value="100" id="cash" size="5" />
+      </div>
+    </div>
+  </body>
+</html>
